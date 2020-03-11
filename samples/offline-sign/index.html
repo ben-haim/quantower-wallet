@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <!-- Please note that we use https://getmdl.io/components for quick and easy page
+         styling and for our client components. Look on their website to see how to use
+         Material Design Lite -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-blue.min.css" />
+  <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+
+  <style>
+  body {
+	  padding: 10px;
+    background-image: radial-gradient(50% 102%,#233050 50%,#0d0e14 100%);
+    color: #fff;
+    font-family: 'Noto Sans',Arial,sans-serif;
+    font-size: 12px;
+    font-weight: 200;
+    line-height: 1.42857143;
+	}
+	.demo-card-wide.mdl-card {
+    margin-left: auto;
+    margin-right: auto;
+	}
+  @media only screen and (min-width: 600px) {
+    .demo-card-wide.mdl-card {
+      width: 600px;
+    }
+  }
+	.demo-card-wide > .mdl-card__title {
+    background-color: #0d0e14;
+	  color: #fff;
+	  height: 176px;
+    flex-direction: column;
+	}
+  .mdl-textfield {
+    width: 100%;
+  }
+  .mdl-card__title-text {
+    align-self: flex-start;
+    font-size: 14px;
+    margin-top: 12px;
+  }
+  h2.mdl-card__title-text {
+    font-size: 22px;
+  }
+	.demo-card-wide > .mdl-card__menu {
+	  color: #fff;
+	}
+  .logo {
+    width: 80px;
+  }
+	.bigger {
+	  font-size: 16px;
+	  margin-bottom: 8px;
+	}
+
+  #jsonDialog.mdl-dialog {
+    width: fit-content;
+    top: 100px;
+  }
+
+	.json-pretty {
+	  padding-left: 30px;
+	  padding-right: 30px;
+	}
+	.json-selected {
+	  background-color: rgba(139, 191, 228, 0.19999999999999996);
+	}
+
+	.json-string {
+	  color: #6caedd;
+	}
+
+	.json-key {
+	  color: #ec5f67;
+	}
+
+	.json-boolean {
+	  color: #99c794;
+	}
+
+	.json-number {
+	  color: #99c794;
+	}
+
+  #hex {
+    word-wrap: break-word;
+    margin-top: 1em;
+    margin-bottom: 1em;
+    padding: 0.5em;
+    border: 1px solid gray;
+    border-radius: 4px;
+    height: 90px;
+  }
+
+  </style>
+
+  <!-- Please note how we hardcode the use of quantowr-sdk version, 0.3.3 in this case -->
+
+  <script src="./qrcode.min.js"></script>
+  <script src="https://unpkg.com/quantower-sdk@1.1.0/dist/quantower-sdk.umd.min.js"></script>
+  <script src="https://unpkg.com/json-pretty-html@1.1.2/dist/bundle.js"></script>
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <script>
+
+    $(document).ready(function () {
+      var sdk = new quantsdk.QuantSDK()
+
+      function generateTxn() {
+
+        var secret = $('#secrettxt').val()
+        var amount = $('#amount').val()
+        var address = $('#address').val()
+
+        var recipientOrRecipientPublicKey = "1"
+        var builder = new quantsdk.Builder()
+            .attachment(quantsdk.attachment.ORDINARY_PAYMENT)
+            .amountHQT(sdk.utils.convertToQNT(amount))
+            .feeHQT("0")
+        var transaction = new quantsdk.Transaction(sdk, address, builder)
+        transaction.sign(secret).then(t => {
+          $('#hex').html(t.getTransaction().getBytesAsHex())
+        })
+      }
+
+      function generateQR() {
+        var dialog = document.querySelector('#qrDialog');
+        if (! dialog.showModal) {
+          dialogPolyfill.registerDialog(dialog);
+        }
+        dialog.showModal();
+
+        var amount = $('#amount').val()
+        var address = $('#address').val()
+        var assetId = $('assetId').val()
+        var paymentMessage = $('paymentMessage').val()
+
+        var width = 210
+        var qrcodeDefaults = {
+          width: width,
+          height: width,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.L
+        }
+
+        $('#qrcode').empty()
+
+        let text = JSON.stringify([
+          'otc','send',
+          [
+            '0',
+            address,
+            sdk.utils.convertToQNT(amount),
+            'https://acme-webshop.com/confirm?param1=1&param2=2&param3=3',
+            assetId,
+            paymentMessage
+          ]
+        ])
+        let url = 'otc://action?p='+encodeURIComponent(text)
+        new QRCode($('#qrcode')[0], Object.assign({ text: url }, qrcodeDefaults))
+
+      }
+
+      function closeQrDialog() {
+        var dialog = document.querySelector('#qrDialog');
+        dialog.close()
+      }
+
+      function closeJsonDialog() {
+        var dialog = document.querySelector('#jsonDialog');
+        dialog.close()
+      }
+
+      function validateTxn() {
+        var dialog = document.querySelector('#jsonDialog');
+        if (! dialog.showModal) {
+          dialogPolyfill.registerDialog(dialog);
+        }
+        dialog.showModal();
+        var bytes = $('#hex').html()
+        sdk.api.post('/tx/parse', { transactionBytes: bytes }).then(data => {
+          $('#json').html(prettyPrint.default(data))
+        }).catch(reason => {
+          showError(reason.errorDescription)
+        })
+      }
+
+      function showError(error) {
+        var snackbarContainer = document.querySelector('#snackbar');
+        var data = {
+          message: error,
+          timeout: 6000
+        }
+        snackbarContainer.MaterialSnackbar.showSnackbar(data);
+      }
+
+      async function generateAddresses(count) {
+    	  sdk.secretGenerator().generate()
+
+      }
+
+      $("#buildbtn").click(generateTxn)
+      $('#checkbtn').click(validateTxn)
+      $('#generateQRbtn').click(generateQR)
+      $('#closeJsonDialog').click(closeJsonDialog)
+      $('#closeQrDialog').click(closeQrDialog)
+    })
+  </script>
+</head>
+
+<body>
+  <code id="dump"></code>
+  <div class="mdl-grid">
+    <div class="demo-card-wide mdl-card mdl-shadow--2dp">
+      <div class="mdl-card__title">
+        <h2 class="mdl-card__title-text">Send offline</h2>
+        <div class="mdl-card__title-text">Build and sign transactions for the Quantower blockchain</div>
+      </div>
+      <div class="mdl-card__supporting-text">
+        <!-- <div>
+          <span class="mdl-chip mdl-chip--contact">
+            <span class="mdl-chip__contact mdl-color--teal mdl-color-text--white">!</span>
+            <span class="mdl-chip__text">Transactions are NOT broadcasted!</span>
+          </span>
+        </div> -->
+        <div>
+          <form action="#">
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+              <input class="mdl-textfield__input" type="text" id="secrettxt"></input>
+              <label class="mdl-textfield__label" for="secrettxt">Your secret phrase</label>
+            </div>
+          </form>
+        </div>
+        <div>
+          <form action="#">
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+              <input class="mdl-textfield__input" type="text" pattern="-?[0-9]*(\.[0-9]+)?" id="amount">
+              <label class="mdl-textfield__label" for="amount">Amount of OTC</label>
+              <span class="mdl-textfield__error">Input is not a number!</span>
+            </div>
+          </form>
+        </div>
+        <div>
+          <form action="#">
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+              <input class="mdl-textfield__input" type="text" rows="2" id="address"></input>
+              <label class="mdl-textfield__label" for="address">Recipient addresss</label>
+            </div>
+          </form>
+        </div>
+        <div>
+          <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent" id="buildbtn">
+            Build & Sign transaction
+          </button>
+        </div>
+        <div class="hex" id="hex"></div>
+        <div>
+          <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent" id="checkbtn">
+            Validate Transaction with API Server
+          </button>
+        </div>
+        <div>
+          <form action="#">
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+              <input class="mdl-textfield__input" type="text" rows="2" id="assetId"></input>
+              <label class="mdl-textfield__label" for="assetId">Asset ID</label>
+            </div>
+          </form>
+        </div>
+        <div>
+          <form action="#">
+            <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label">
+              <input class="mdl-textfield__input" type="text" rows="2" id="paymentMessage"></input>
+              <label class="mdl-textfield__label" for="paymentMessage">Payment Message</label>
+            </div>
+          </form>
+        </div>
+        <button class="mdl-button mdl-js-button mdl-button--raised mdl-js-ripple-effect mdl-button--accent generateQRbtn" id="generateQRbtn">
+          Create QR code
+        </button>
+      </div>
+    </div>
+  </div>
+  <dialog id="jsonDialog" class="mdl-dialog">
+    <div class="mdl-dialog__content">
+      <div id="json"></div>
+    </div>
+    <div class="mdl-dialog__actions mdl-dialog__actions">
+      <button type="button" class="mdl-button" id="closeJsonDialog">Done</button>
+    </div>
+  </dialog>
+  <dialog id="qrDialog" class="mdl-dialog">
+    <div class="mdl-dialog__content">
+      <div id="qrcode"></div>
+      <h4>Scan code with Wallet app to pay</h4>
+      <p>Download Wallet app at</p>
+      <p>
+        <img src="play-store.png" style="width: 140px"/>
+      </p>
+    </div>
+    <div class="mdl-dialog__actions mdl-dialog__actions">
+      <button type="button" class="mdl-button" id="closeQrDialog">Done</button>
+    </div>
+  </dialog>
+  <div id="snackbar" class="mdl-js-snackbar mdl-snackbar">
+    <div class="mdl-snackbar__text"></div>
+    <button class="mdl-snackbar__action" type="button"></button>
+  </div>
+</body>
+
+</html>

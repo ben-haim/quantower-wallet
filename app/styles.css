@@ -1,0 +1,13 @@
+/* Overwrites max width for col-xs children */
+@media (max-width: 768px) {
+  .container-fluid {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+@media print {
+  .dont-print {
+    display: none
+  }
+}

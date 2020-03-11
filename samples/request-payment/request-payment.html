@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Request Payment</title>
+  <script src="./qrcode.min.js"></script>
+  <script src="https://unpkg.com/jquery"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var width = 210
+      var qrcodeDefaults = {
+        width: width,
+        height: width,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.L
+      }
+
+      $('#qrcode').empty()
+
+      let text = JSON.stringify([
+        'otc','send',
+        [
+          '0',
+          '873429340825552830',
+          '100000000',
+          'https://acme-webshop.com/confirm?param1=1&param2=2&param3=3'
+        ]
+      ])
+      let url = 'otc://action?p='+encodeURIComponent(text)
+      new QRCode($('#qrcode')[0], Object.assign({ text: url }, qrcodeDefaults))
+    })
+
+  </script>
+
+  <!-- endbuild -->
+</head>
+
+<body>
+  <center>
+    <h1>Acme Webshop Checkout</h1>
+    <h3>Item: <b>Cake</b>, Quantity: <b>1</b>, Price: <b>1.00</b></h3>
+    <p>
+      <a href="">Click to pay with Wallet app</a>
+    </p>
+    <p></p>
+    <div id="qrcode"></div>
+    <h4>Scan code with Wallet app to pay</h4>
+    <p>Download Wallet app below</p>
+    <p>
+      <img src="app-store.svg" style="width: 140px"/>
+    </p>
+    <p>
+      <img src="play-store.png" style="width: 140px"/>
+    </p>
+  </center>
+</body>
+
+</html>
