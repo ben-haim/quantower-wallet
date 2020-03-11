@@ -15,7 +15,7 @@ This is a sample paper wallet.
 
 Installation is super simple.
 
-<a href="https://raw.githubusercontent.com/ychaim/quantower-paperwallet/master/dist/quantower-paperwallet.html" download>Save this file to your computer</a>
+<a href="https://raw.githubusercontent.com/ychaim/quantower-wallet/master/dist/quantower-paperwallet.html" download>Save this file to your computer</a>
 
   1. Download and save above file to somewhere on your computer (to download right click the link and choose SAVE)
   2. Locate the downloaded file 
